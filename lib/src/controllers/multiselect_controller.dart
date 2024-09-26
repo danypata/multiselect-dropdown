@@ -49,12 +49,14 @@ class MultiSelectController<T> extends ChangeNotifier {
 
   /// sets the list of dropdown items.
   /// It replaces the existing list of dropdown items.
-  void setItems(List<DropdownItem<T>> options) {
+  void setItems(List<DropdownItem<T>> options, {bool notifySelection = true}) {
     _items
       ..clear()
       ..addAll(options);
     notifyListeners();
-    _onSelectionChanged?.call(_selectedValues);
+    if (notifySelection) {
+      _onSelectionChanged?.call(_selectedValues);
+    }
   }
 
   /// Adds a dropdown item to the list of dropdown items.
