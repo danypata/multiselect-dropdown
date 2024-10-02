@@ -22,6 +22,8 @@ class SearchFieldDecoration {
       borderRadius: BorderRadius.all(Radius.circular(12)),
     ),
     this.searchIcon = const Icon(Icons.search),
+    this.hintStyle,
+    this.textStyle,
   });
 
   /// The hint text to display in the search field.
@@ -35,6 +37,12 @@ class SearchFieldDecoration {
 
   /// The icon to display in the search field.
   final Icon searchIcon;
+
+  /// The style for the hint text
+  final TextStyle? hintStyle;
+
+  /// The style for the search field text.
+  final TextStyle? textStyle;
 }
 
 /// Represents the decoration for the dropdown items.

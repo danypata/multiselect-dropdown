@@ -208,12 +208,14 @@ class _SearchField extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.all(8),
       child: TextField(
+        style: decoration.textStyle,
         decoration: InputDecoration(
           isDense: true,
           hintText: decoration.hintText,
           border: decoration.border,
           focusedBorder: decoration.focusedBorder,
           suffixIcon: decoration.searchIcon,
+          hintStyle: decoration.hintStyle,
         ),
         onChanged: onChanged,
       ),
