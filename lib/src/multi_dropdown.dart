@@ -7,10 +7,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 part 'controllers/future_controller.dart';
+
 part 'controllers/multiselect_controller.dart';
+
 part 'enum/enums.dart';
+
 part 'models/decoration.dart';
+
 part 'models/dropdown_item.dart';
+
 // part 'models/network_request.dart';
 part 'widgets/dropdown.dart';
 
@@ -106,6 +111,7 @@ class MultiDropdown<T extends Object> extends StatefulWidget {
     this.onSelectionChange,
     this.onSearchChange,
     this.closeOnBackButton = false,
+    this.onChipDelete,
     Key? key,
   })  : future = null,
         super(key: key);
@@ -154,6 +160,7 @@ class MultiDropdown<T extends Object> extends StatefulWidget {
     this.onSelectionChange,
     this.onSearchChange,
     this.closeOnBackButton = false,
+    this.onChipDelete,
     Key? key,
   })  : items = const [],
         super(key: key);
@@ -224,6 +231,9 @@ class MultiDropdown<T extends Object> extends StatefulWidget {
   ///
   /// Note: This option requires the app to have a router, such as MaterialApp.router, in order to work properly.
   final bool closeOnBackButton;
+
+  /// Called when x is pressed on chip.
+  final ValueChanged<T>? onChipDelete;
 
   @override
   State<MultiDropdown<T>> createState() => _MultiDropdownState<T>();
@@ -619,7 +629,7 @@ class _MultiDropdownState<T extends Object> extends State<MultiDropdown<T>> {
   }
 
   Widget _buildChip(
-    DropdownItem<dynamic> option,
+    DropdownItem<T> option,
     ChipDecoration chipDecoration,
   ) {
     return Container(
@@ -638,6 +648,7 @@ class _MultiDropdownState<T extends Object> extends State<MultiDropdown<T>> {
           const SizedBox(width: 4),
           InkWell(
             onTap: () {
+              widget.onChipDelete?.call(option.value);
               _dropdownController
                   .unselectWhere((element) => element.label == option.label);
             },
