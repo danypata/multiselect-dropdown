@@ -112,6 +112,7 @@ class MultiDropdown<T extends Object> extends StatefulWidget {
     this.onSearchChange,
     this.closeOnBackButton = false,
     this.onChipDelete,
+    this.onClear,
     Key? key,
   })  : future = null,
         super(key: key);
