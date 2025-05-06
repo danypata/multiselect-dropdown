@@ -161,9 +161,13 @@ class MultiDropdown<T extends Object> extends StatefulWidget {
     this.onSearchChange,
     this.closeOnBackButton = false,
     this.onChipDelete,
+    this.onClear,
     Key? key,
   })  : items = const [],
         super(key: key);
+
+  /// The callback when the clear button is pressed.
+  final VoidCallback? onClear;
 
   /// The list of dropdown items.
   final List<DropdownItem<T>> items;
@@ -552,6 +556,7 @@ class _MultiDropdownState<T extends Object> extends State<MultiDropdown<T>> {
       return GestureDetector(
         child: const Icon(Icons.clear),
         onTap: () {
+          widget.onClear?.call();
           _dropdownController.clearAll();
           _formFieldKey.currentState
               ?.didChange(_dropdownController.selectedItems);
