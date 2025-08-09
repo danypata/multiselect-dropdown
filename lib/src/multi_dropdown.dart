@@ -11,13 +11,18 @@ part 'controllers/future_controller.dart';
 part 'controllers/multiselect_controller.dart';
 
 part 'enum/enums.dart';
+part 'enum/navigation_mode.dart';
 
 part 'models/decoration.dart';
-
 part 'models/dropdown_item.dart';
+part 'models/focus_event.dart';
+part 'models/keyboard_config.dart';
 
 // part 'models/network_request.dart';
 part 'widgets/dropdown.dart';
+part 'widgets/focus_manager.dart';
+part 'widgets/keyboard_handler.dart';
+part 'widgets/dropdown_focus_scope.dart';
 
 /// typedef for the dropdown item builder.
 typedef DropdownItemBuilder<T> = Widget Function(
@@ -25,6 +30,14 @@ typedef DropdownItemBuilder<T> = Widget Function(
   int index,
   VoidCallback onTap,
 );
+
+/// typedef for the dropdown item builder with focus support.
+typedef DropdownItemBuilderWithFocus<T> = Widget Function(
+  DropdownItem<T> item,
+  int index,
+  VoidCallback onTap, {
+  required bool isFocused,
+});
 
 /// typedef for the callback when the item is selected/de-selected/disabled.
 typedef OnSelectionChanged<T> = void Function(List<T> selectedItems);
@@ -82,7 +95,13 @@ class MultiDropdown<T extends Object> extends StatefulWidget {
   ///
   /// The [selectedItemBuilder] is the builder for the selected items. If not provided, the default Chip will be used.
   ///
-  /// The [focusNode] is the focus node for the dropdown.
+  /// The [focusNode] is the focus node for the dropdown field.
+  ///
+  /// The [searchFocusNode] is the focus node for the search field.
+  ///
+  /// The [keyboardConfig] is the configuration for keyboard navigation behavior.
+  ///
+  /// The [onFocusChange] is the callback when focus changes within the dropdown.
   ///
   /// The [onSelectionChange] is the callback when the item is changed.
   ///
@@ -108,6 +127,9 @@ class MultiDropdown<T extends Object> extends StatefulWidget {
     this.maxSelections = 0,
     this.selectedItemBuilder,
     this.focusNode,
+    this.searchFocusNode,
+    this.keyboardConfig = const KeyboardNavigationConfig(),
+    this.onFocusChange,
     this.onSelectionChange,
     this.onSearchChange,
     this.closeOnBackButton = false,
@@ -158,6 +180,9 @@ class MultiDropdown<T extends Object> extends StatefulWidget {
     this.maxSelections = 0,
     this.selectedItemBuilder,
     this.focusNode,
+    this.searchFocusNode,
+    this.keyboardConfig = const KeyboardNavigationConfig(),
+    this.onFocusChange,
     this.onSelectionChange,
     this.onSearchChange,
     this.closeOnBackButton = false,
@@ -218,8 +243,14 @@ class MultiDropdown<T extends Object> extends StatefulWidget {
   /// Whether the search field is enabled.
   final bool searchEnabled;
 
-  /// The focus node for the dropdown.
+  /// The focus node for the dropdown field.
   final FocusNode? focusNode;
+
+  /// The focus node for the search field.
+  final FocusNode? searchFocusNode;
+
+  /// The keyboard navigation configuration.
+  final KeyboardNavigationConfig keyboardConfig;
 
   /// The future request for the dropdown items.
   final FutureRequest<T>? future;
@@ -231,6 +262,9 @@ class MultiDropdown<T extends Object> extends StatefulWidget {
 
   /// The callback when the search field value changes.
   final OnSearchChanged? onSearchChange;
+
+  /// The callback when focus changes within the dropdown.
+  final ValueChanged<FocusChangeEvent<T>>? onFocusChange;
 
   /// Whether to close the dropdown when the back button is pressed.
   ///
@@ -254,6 +288,7 @@ class _MultiDropdownState<T extends Object> extends State<MultiDropdown<T>> {
   final _FutureController _loadingController = _FutureController();
 
   late FocusNode _focusNode = widget.focusNode ?? FocusNode();
+  late FocusNode _searchFocusNode = widget.searchFocusNode ?? FocusNode();
 
   late final Listenable _listenable = Listenable.merge([
     _dropdownController,
@@ -282,6 +317,8 @@ class _MultiDropdownState<T extends Object> extends State<MultiDropdown<T>> {
     if (!_dropdownController._initialized) {
       _dropdownController
         .._initialize()
+        .._setSearchEnabled(widget.searchEnabled)
+        .._setKeyboardConfig(widget.keyboardConfig)
         ..setItems(widget.items);
     }
 
@@ -290,6 +327,11 @@ class _MultiDropdownState<T extends Object> extends State<MultiDropdown<T>> {
         ..addListener(_controllerListener)
         .._setOnSelectionChange(widget.onSelectionChange)
         .._setOnSearchChange(widget.onSearchChange);
+
+      // Setup focus change listener if provided
+      if (widget.onFocusChange != null) {
+        _dropdownController.addFocusChangeListener(widget.onFocusChange!);
+      }
 
       // if close on back button is enabled, then add the listener
       _listenBackButton();
@@ -346,7 +388,17 @@ class _MultiDropdownState<T extends Object> extends State<MultiDropdown<T>> {
     _formFieldKey.currentState?.didChange(_dropdownController.selectedItems);
 
     if (_dropdownController.isOpen) {
+      final wasShowing = _portalController.isShowing;
       _portalController.show();
+
+      // Auto-focus search field only when dropdown first opens (not on subsequent state changes)
+      if (!wasShowing && widget.searchEnabled &&
+          _dropdownController.currentFocusMode == NavigationMode.search) {
+        // Use post-frame callback to ensure the search field is built
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _searchFocusNode.requestFocus();
+        });
+      }
     } else {
       _dropdownController._clearSearchQuery();
       _portalController.hide();
@@ -370,8 +422,18 @@ class _MultiDropdownState<T extends Object> extends State<MultiDropdown<T>> {
     // if the focus node is changed, then dispose the old focus node
     // and initialize the new focus node.
     if (oldWidget.focusNode != widget.focusNode) {
-      _focusNode.dispose();
+      if (oldWidget.focusNode == null) {
+        _focusNode.dispose();
+      }
       _focusNode = widget.focusNode ?? FocusNode();
+    }
+
+    // if the search focus node is changed, handle it properly
+    if (oldWidget.searchFocusNode != widget.searchFocusNode) {
+      if (oldWidget.searchFocusNode == null) {
+        _searchFocusNode.dispose();
+      }
+      _searchFocusNode = widget.searchFocusNode ?? FocusNode();
     }
 
     super.didUpdateWidget(oldWidget);
@@ -388,6 +450,9 @@ class _MultiDropdownState<T extends Object> extends State<MultiDropdown<T>> {
     _loadingController.dispose();
     if (widget.focusNode == null) {
       _focusNode.dispose();
+    }
+    if (widget.searchFocusNode == null) {
+      _searchFocusNode.dispose();
     }
 
     super.dispose();
@@ -441,19 +506,28 @@ class _MultiDropdownState<T extends Object> extends State<MultiDropdown<T>> {
                       ? Offset.zero
                       : Offset(0, widget.dropdownDecoration.marginTop),
                   child: RepaintBoundary(
-                    child: _Dropdown<T>(
-                      decoration: widget.dropdownDecoration,
-                      onItemTap: _handleDropdownItemTap,
-                      width: renderBoxSize.width,
-                      items: _dropdownController.items,
-                      searchEnabled: widget.searchEnabled,
-                      dropdownItemDecoration: widget.dropdownItemDecoration,
-                      itemBuilder: widget.itemBuilder,
-                      itemSeparator: widget.itemSeparator,
-                      searchDecoration: widget.searchDecoration,
-                      maxSelections: widget.maxSelections,
-                      singleSelect: widget.singleSelect,
-                      onSearchChange: _dropdownController._setSearchQuery,
+                    child: DropdownFocusScope(
+                      trapFocus: widget.keyboardConfig.trapFocusInDropdown,
+                      onEscape: widget.keyboardConfig.enableEscapeToClose
+                          ? () {
+                              _dropdownController.closeDropdown();
+                            }
+                          : null,
+                      child: _Dropdown<T>(
+                        decoration: widget.dropdownDecoration,
+                        onItemTap: _handleDropdownItemTap,
+                        width: renderBoxSize.width,
+                        items: _dropdownController.items,
+                        searchEnabled: widget.searchEnabled,
+                        searchFocusNode: _searchFocusNode,
+                        dropdownItemDecoration: widget.dropdownItemDecoration,
+                        itemBuilder: widget.itemBuilder,
+                        itemSeparator: widget.itemSeparator,
+                        searchDecoration: widget.searchDecoration,
+                        maxSelections: widget.maxSelections,
+                        singleSelect: widget.singleSelect,
+                        onSearchChange: _dropdownController._setSearchQuery,
+                      ),
                     ),
                   ),
                 ),

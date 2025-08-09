@@ -73,6 +73,9 @@ class DropdownItemDecoration {
     this.disabledTextColor,
     this.selectedIcon = const Icon(Icons.check),
     this.disabledIcon,
+    this.focusedBackgroundColor,
+    this.focusedTextColor,
+    this.focusedBorderColor,
   });
 
   /// The background color of the dropdown item.
@@ -98,6 +101,15 @@ class DropdownItemDecoration {
 
   /// The icon to display for the disabled dropdown item.
   final Icon? disabledIcon;
+
+  /// Background color when item is focused
+  final Color? focusedBackgroundColor;
+
+  /// Text color when item is focused
+  final Color? focusedTextColor;
+
+  /// Border color when item is focused
+  final Color? focusedBorderColor;
 }
 
 /// Represents the decoration for the dropdown.
@@ -198,6 +210,10 @@ class FieldDecoration {
     this.padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
     this.backgroundColor,
     this.showClearIcon = true,
+    this.focusedBackgroundColor,
+    this.focusedLabelStyle,
+    this.animateBorderChanges = true,
+    this.focusTransitionDuration = const Duration(milliseconds: 200),
   });
 
   /// The label text to display above the dropdown field.
@@ -244,6 +260,18 @@ class FieldDecoration {
 
   /// show clear icon or not in the dropdown field
   final bool showClearIcon;
+
+  /// Background color when field is focused
+  final Color? focusedBackgroundColor;
+
+  /// Label style when focused
+  final TextStyle? focusedLabelStyle;
+
+  /// Animate border changes
+  final bool animateBorderChanges;
+
+  /// Focus transition duration
+  final Duration focusTransitionDuration;
 }
 
 /// Configuration class for customizing the appearance of chips in the multi-select dropdown.
